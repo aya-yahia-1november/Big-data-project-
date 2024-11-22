@@ -1,0 +1,21 @@
+agent2.sources.source2.type = org.apache.flume.source.kafka.KafkaSource
+agent2.sources.source2.kafka.bootstrap.servers = localhost:9092
+agent2.sources.source2.kafka.topics = data_from_flume
+agent2.sources.source2.channels = channel2
+agent2.sources.source2.batchSize = 5000
+agent2.sources.source2.batchDurationMillis = 2000
+agent2.sources.source2.channels = channel2
+
+# Describe the sink
+agent2.sinks.sink2.type = hdfs
+
+agent2.sinks.sink2.hdfs.path = /user/bigdata/data_from_kafka
+agent2.sinks.sink2.hdfs.round = true
+agent2.sinks.sink2.hdfs.roundValue = 10
+agent2.sinks.sink2.hdfs.roundUnit = minute
+agent2.sinks.sink2.channel = channel2
+
+# Use a channel which buffers events in memory
+agent2.channels.channel2.type = memory
+agent2.channels.channel2.capacity = 5000
+agent2.channels.channel2.transactionCapacity = 5000
