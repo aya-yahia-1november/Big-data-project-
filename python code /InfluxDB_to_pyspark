@@ -1,0 +1,111 @@
+from pyspark.sql import SparkSession
+from pyspark.sql import Row
+from kafka import KafkaConsumer
+import json
+from influxdb_client import InfluxDBClient, Point
+from influxdb_client.client.write_api import SYNCHRONOUS
+
+# Initialize Spark session
+spark = SparkSession.builder \
+.appName("KafkaToSparkPopulationData") \
+.config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.0.1") \
+.getOrCreate()
+
+# InfluxDB configuration
+influxdb_url = "https://us-east-1-1.aws.cloud2.influxdata.com"
+
+token = "AeBZv79afYgpI1nl3baai2dPvE8y_XZZgpx-9ofpkSjH240BTMNOoGsxxb9GZeo_ssgrcUMj0pktZkyv-
+6KIBA==" # your token 
+
+org = "data" #your org name 
+bucket = "data_from_kafka" # your bucket in influxdb
+# Kafka configuration
+
+KAFKA_BROKER = 'localhost:9092'
+TOPIC = 'data_from_flume'# your kafka topic
+
+# Initialize InfluxDB client
+client = InfluxDBClient(url=influxdb_url, token=token, org=org, precision="s", debug=True)
+write_api = client.write_api(write_options=SYNCHRONOUS)
+
+# Define schema for population data logs
+schema = ["ID_Nation", "Nation", "Population", "Year"]
+
+# Initialize Kafka consumer
+consumer = KafkaConsumer(
+TOPIC,
+bootstrap_servers=KAFKA_BROKER,
+auto_offset_reset='latest',
+value_deserializer=lambda x: json.loads(x.decode('utf-8'))
+)
+
+# List to accumulate rows and other configurations
+rows = []
+batch_size = 20 # Define the size of each batch
+max_messages = 100 # Total number of messages to process before finishing
+message_count = 0 # Counter for processed messages
+
+# Process Kafka messages
+for message in consumer:
+data = message.value # Directly use the deserialized dictionary
+
+# Create a Row object for Spark
+
+row = Row(
+ID_Nation=data['ID Nation'],
+Nation=data['Nation'],
+Population=int(data['Population']), # Ensure data type consistency
+Year=int(data['year']) # Ensure data type consistency
+)
+
+rows.append(row)
+message_count += 1
+
+# Process batch if the batch size is reached
+if len(rows) == batch_size:
+# Create DataFrame and show data for this batch
+df = spark.createDataFrame(rows, schema=schema)
+df.show()
+
+# Write data to InfluxDB
+try:
+for row in df.collect():
+point = Point("population_data") \
+.tag("ID_Nation", row.ID_Nation) \
+.tag("Nation", row.Nation) \
+.field("Population", row.Population) \
+.field("Year", row.Year)
+write_api.write(bucket=bucket, org=org, record=point)
+print(f"Batch of {batch_size} records successfully written to InfluxDB.")
+
+except Exception as e:
+print(f"Error writing to InfluxDB: {e}")
+
+# Reset the rows list for the next batch
+rows = []
+
+# Stop processing if max_messages limit is reached
+if message_count >= max_messages:
+print(f"Processed {max_messages} messages. Stopping.")
+break
+
+# Process any remaining rows after exiting the loop
+if rows:
+df = spark.createDataFrame(rows, schema=schema)
+df.show()
+
+try:
+for row in df.collect():
+point = Point("population_data") \
+.tag("ID_Nation", row.ID_Nation) \
+.tag("Nation", row.Nation) \
+.field("Population", row.Population) \
+.field("Year", row.Year)
+write_api.write(bucket=bucket, org=org, record=point)
+print(f"Remaining {len(rows)} records successfully written to InfluxDB.")
+except Exception as e:
+print(f"Error writing remaining records to InfluxDB: {e}")
+
+# Clean up
+consumer.close()
+client.close()
