@@ -6,16 +6,13 @@
 This project establishes two robust data pipelines to process and analyze real-time API data.  
 - **Path 1**: Stream data from an API → Flume → Kafka → HDFS for batch analysis.  
 - **Path 2**: Stream data from an API → Flume → Kafka → InfluxDB → Grafana for time-series visualization.  
-
+  ![stream (1)](https://github.com/user-attachments/assets/341fb245-e479-4788-9ab7-2aac8e05b3d1)
 #### **Key Features**  
 1. **Data Generation**: Fetching population data from a public API.  
 2. **Data Streaming**: Utilizing Apache Flume and Apache Kafka for streaming.  
 3. **Data Storage & Visualization**:  
    - HDFS for large-scale batch storage and analysis.  
-   - InfluxDB for time-series data analysis, visualized in Grafana.
-   ![stream (1)](https://github.com/user-attachments/assets/341fb245-e479-4788-9ab7-2aac8e05b3d1)
-
-
+   - InfluxDB for time-series data analysis, visualized in Grafana
 ---
 
 ### **System Architecture**  
