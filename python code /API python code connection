@@ -1,0 +1,49 @@
+import requests
+import json
+import time
+import os
+
+# Function to connect to API, retrieve data, and save each row to a separate JSON file
+def fetch_and_save_api_data(api_url, interval=300):
+# Create the folder if it doesn't exist
+
+folder_name = "data_gen"
+if not os.path.exists(folder_name):
+os.makedirs(folder_name)
+
+while True:
+try:
+# Make a request to the API
+response = requests.get(api_url)
+response.raise_for_status() # Check if the request was successful
+
+# Parse the JSON data from the response
+data = response.json()
+
+# Extract relevant data from the API response
+# The 'data' key contains the array with the population data
+population_data = data.get('data', [])
+
+# Iterate over each record and save it to a separate JSON file
+for i, row in enumerate(population_data):
+# File naming
+file_name = f"{folder_name}/data_row_{i + 1}.json"
+
+# Save the row to a JSON file
+with open(file_name, "w") as json_file:
+json.dump(row, json_file, separators=(',', ':'))
+
+print(f"Data successfully saved to {file_name}")
+
+except requests.exceptions.RequestException as e:
+
+print(f"Error fetching data: {e}")
+
+# Wait for the specified interval before fetching the next batch of data
+time.sleep(interval)
+
+# Example usage
+api_url = "https://datausa.io/api/data?drilldowns=Nation&measures=Population"
+
+# Fetch and save API data every 60 seconds (or adjust as needed)
+fetch_and_save_api_data(api_url, interval=60)
